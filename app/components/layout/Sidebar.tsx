@@ -5,12 +5,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   Book, 
-  BarChart3, 
-  Settings, 
   FileText, 
   Plus, 
   Home,
-  Menu,
   X,
   LogOut
 } from 'lucide-react';
@@ -45,10 +42,7 @@ export default function Sidebar({ className, closeSidebar }: SidebarProps) {
   const navigationItems = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Meus E-books', href: '/ebooks', icon: Book },
-    { name: 'Novo E-book', href: '/ebooks/new', icon: Plus },
-    { name: 'Estatísticas', href: '/stats', icon: BarChart3 },
-    { name: 'Templates', href: '/templates', icon: FileText },
-    { name: 'Configurações', href: '/account', icon: Settings },
+    { name: 'Novo E-book', href: '/ebooks/new', icon: Plus }
   ];
 
   const toggleMobileMenu = () => {
@@ -70,7 +64,7 @@ export default function Sidebar({ className, closeSidebar }: SidebarProps) {
     zIndex: 40,
     background: 'linear-gradient(to bottom, #7c3aed, #4c1d95)',
     color: 'white',
-    width: '16rem',
+    width: '14rem',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
     display: 'flex',
     flexDirection: 'column' as const,
@@ -78,7 +72,7 @@ export default function Sidebar({ className, closeSidebar }: SidebarProps) {
   };
 
   const logoContainerStyle = {
-    padding: '1.5rem',
+    padding: '1.25rem',
     borderBottom: '1px solid rgba(124, 58, 237, 0.5)',
     display: 'flex',
     justifyContent: 'space-between',
@@ -86,7 +80,7 @@ export default function Sidebar({ className, closeSidebar }: SidebarProps) {
   };
 
   const logoTextStyle = {
-    fontSize: '1.25rem',
+    fontSize: '1.125rem',
     fontWeight: 'bold',
     background: 'linear-gradient(to right, white, #e9d5ff)',
     backgroundClip: 'text',
@@ -96,7 +90,7 @@ export default function Sidebar({ className, closeSidebar }: SidebarProps) {
   };
 
   const closeButtonStyle = {
-    padding: '0.5rem',
+    padding: '0.375rem',
     borderRadius: '9999px',
     backgroundColor: 'rgba(124, 58, 237, 0.5)',
     border: 'none',
@@ -116,15 +110,19 @@ export default function Sidebar({ className, closeSidebar }: SidebarProps) {
   const navListStyle = {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: '0.5rem'
+    gap: '0.5rem',
+    listStyle: 'none',
+    margin: 0,
+    padding: 0
   };
 
   const getNavItemStyle = (isActive: boolean) => ({
     display: 'flex',
     alignItems: 'center',
     gap: '0.75rem',
-    padding: '0.75rem',
-    borderRadius: '0.5rem',
+    padding: '0.75rem 0.75rem',
+    marginBottom: '0.25rem',
+    borderRadius: '0.375rem',
     transition: 'all 200ms',
     backgroundColor: isActive ? 'rgba(124, 58, 237, 0.7)' : 'transparent',
     fontWeight: isActive ? 'medium' : 'normal',
@@ -143,9 +141,9 @@ export default function Sidebar({ className, closeSidebar }: SidebarProps) {
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
-    padding: '0.75rem',
+    padding: '0.625rem',
     width: '100%',
-    borderRadius: '0.5rem',
+    borderRadius: '0.375rem',
     backgroundColor: 'rgba(124, 58, 237, 0.3)',
     color: 'white',
     border: 'none',
@@ -171,7 +169,7 @@ export default function Sidebar({ className, closeSidebar }: SidebarProps) {
           onClick={handleCloseSidebar}
           style={{...closeButtonStyle, display: isMobile ? 'flex' : 'none'}}
         >
-          <X size={20} />
+          <X size={18} />
         </button>
       </div>
 
@@ -186,13 +184,14 @@ export default function Sidebar({ className, closeSidebar }: SidebarProps) {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
+                style={{ listStyleType: 'none' }}
               >
                 <Link
                   href={item.href}
                   style={getNavItemStyle(isActive)}
                   onClick={handleCloseSidebar}
                 >
-                  <item.icon size={20} style={{ color: isActive ? 'white' : 'rgba(233, 213, 255, 0.8)' }} />
+                  <item.icon size={18} style={{ color: isActive ? 'white' : 'rgba(233, 213, 255, 0.8)' }} />
                   <span>{item.name}</span>
                 </Link>
               </motion.li>
@@ -209,7 +208,7 @@ export default function Sidebar({ className, closeSidebar }: SidebarProps) {
         style={footerStyle}
       >
         <button style={logoutButtonStyle}>
-          <LogOut size={20} />
+          <LogOut size={18} />
           <span>Sair</span>
         </button>
       </motion.div>

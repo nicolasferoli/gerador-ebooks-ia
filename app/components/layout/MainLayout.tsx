@@ -64,7 +64,7 @@ export default function MainLayout({ children, tasks = [] }: MainLayoutProps) {
     insetY: 0,
     left: 0,
     zIndex: 30,
-    width: '16rem',
+    width: '14rem',
     backgroundColor: '#1e293b',
     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
     transitionProperty: 'transform',
