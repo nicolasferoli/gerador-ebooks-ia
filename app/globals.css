@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+ 
+:root {
+  --primary: 270 70% 45%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+}
+
+/* Estilos personalizados para conteúdo de e-books */
+.ebook-content h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ebook-content h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.ebook-content h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.ebook-content p {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.ebook-content ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.ebook-content ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.ebook-content blockquote {
+  border-left-width: 4px;
+  border-color: rgb(59 130 246);
+  padding-left: 1rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  background-color: rgb(239 246 255);
+  font-style: italic;
+}
+
+[data-theme="dark"] .ebook-content blockquote {
+  background-color: rgba(30, 58, 138, 0.2);
+}
+
+/* Animações para componentes UI */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-fadeInRight {
+  animation: fadeInRight 0.3s ease-out forwards;
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.3s ease-out forwards;
+} 

@@ -1,36 +1,117 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Gerador de E-books com IA
 
-## Getting Started
+Uma aplicação Next.js para gerar e-books profissionais com auxílio de inteligência artificial.
 
-First, run the development server:
+## Recursos principais
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Geração automática de conteúdo com OpenAI
+- Interface moderna e responsiva com Tailwind CSS e shadcn UI
+- Modo escuro como padrão
+- Autenticação completa com Supabase
+- Processamento assíncrono para tarefas de geração
+- Exportação de e-books em diferentes formatos
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Tecnologias utilizadas
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Frontend**: Next.js 14, TypeScript, Tailwind CSS, Shadcn UI
+- **Backend**: Supabase (autenticação, banco de dados)
+- **IA**: OpenAI API
+- **Gerenciamento de estado**: SWR para chamadas assíncronas
+- **Outros**: React-quill, jspdf, html2canvas
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Requisitos para execução
 
-## Learn More
+- Node.js 18.x ou superior
+- Conta no Supabase
+- Chave de API da OpenAI
 
-To learn more about Next.js, take a look at the following resources:
+## Configuração do ambiente
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Clone o repositório
+2. Instale as dependências:
+   ```bash
+   npm install
+   ```
+3. Crie um arquivo `.env.local` baseado no `.env.example` e adicione suas chaves:
+   ```
+   # Supabase
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   # OpenAI
+   OPENAI_API_KEY=your-openai-api-key
 
-## Deploy on Vercel
+   # Aplicação
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
+   ```
+4. Inicie o servidor de desenvolvimento:
+   ```bash
+   npm run dev
+   ```
+5. Acesse `http://localhost:3000`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Estrutura do banco de dados (Supabase)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Tabela `profiles`
+- id (UUID, PK, referência para auth.users)
+- full_name (TEXT)
+- avatar_url (TEXT)
+- credits (INTEGER)
+- role (TEXT)
+- created_at (TIMESTAMP)
+- updated_at (TIMESTAMP)
+
+### Tabela `ebooks`
+- id (UUID, PK)
+- user_id (UUID, FK para profiles.id)
+- title (TEXT)
+- description (TEXT)
+- template_id (UUID, nullable)
+- cover_image_url (TEXT, nullable)
+- status (TEXT) - enum: 'draft', 'generating_toc', 'generating_chapters', 'generating_cover', 'completed', 'failed'
+- progress (INTEGER)
+- toc_generated (BOOLEAN)
+- created_at (TIMESTAMP)
+- updated_at (TIMESTAMP)
+
+### Tabela `chapters`
+- id (UUID, PK)
+- ebook_id (UUID, FK para ebooks.id)
+- title (TEXT)
+- number (INTEGER)
+- content (TEXT)
+- status (TEXT) - enum: 'pending', 'generating', 'completed', 'failed'
+- created_at (TIMESTAMP)
+- updated_at (TIMESTAMP)
+
+### Tabela `templates`
+- id (UUID, PK)
+- name (TEXT)
+- description (TEXT)
+- cover_image_url (TEXT)
+- chapter_structure (JSONB)
+- created_at (TIMESTAMP)
+- updated_at (TIMESTAMP)
+
+## Fluxo de geração de e-books
+
+1. Usuário escolhe um template ou cria um e-book do zero
+2. Usuário fornece título e descrição do e-book
+3. O sistema gera automaticamente o sumário (tabela de conteúdos)
+4. O sistema gera o conteúdo de cada capítulo sequencialmente
+5. O sistema gera uma capa para o e-book
+6. Usuário pode revisar e editar o conteúdo gerado
+7. Usuário pode exportar o e-book para PDF ou HTML
+
+## Contribuição
+
+1. Faça um fork do projeto
+2. Crie sua branch de feature (`git checkout -b feature/nova-funcionalidade`)
+3. Commit suas mudanças (`git commit -m 'Adiciona nova funcionalidade'`)
+4. Push para a branch (`git push origin feature/nova-funcionalidade`)
+5. Abra um Pull Request
+
+## Licença
+
+Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICENSE) para mais detalhes.
