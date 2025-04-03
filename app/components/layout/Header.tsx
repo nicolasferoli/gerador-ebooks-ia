@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, Menu, Bell, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -129,10 +129,7 @@ export default function Header({ toggleSidebar, tasks = [] }: HeaderProps) {
   };
   
   const userInfoStyle = {
-    display: 'none',
-    '@media (min-width: 768px)': {
-      display: 'block'
-    }
+    display: 'none'
   };
   
   const userNameStyle = {
@@ -145,6 +142,20 @@ export default function Header({ toggleSidebar, tasks = [] }: HeaderProps) {
     color: '#6b7280',
     fontSize: '0.75rem'
   };
+
+  // Aplicar regras responsivas apenas no cliente
+  const [isDesktop, setIsDesktop] = useState(false);
+  
+  useEffect(() => {
+    const checkIsDesktop = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+    
+    checkIsDesktop();
+    window.addEventListener('resize', checkIsDesktop);
+    
+    return () => window.removeEventListener('resize', checkIsDesktop);
+  }, []);
 
   return (
     <header style={headerStyle}>
@@ -189,7 +200,7 @@ export default function Header({ toggleSidebar, tasks = [] }: HeaderProps) {
             <div style={avatarStyle}>
               <User size={20} />
             </div>
-            <div style={{...userInfoStyle, display: 'none', '@media (min-width: 768px)': { display: 'block' }}}>
+            <div style={{...userInfoStyle, display: isDesktop ? 'block' : 'none'}}>
               <div style={userNameStyle}>Usuário</div>
               <div style={userRoleStyle}>Autor</div>
             </div>

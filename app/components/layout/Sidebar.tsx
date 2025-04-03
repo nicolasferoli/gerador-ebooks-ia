@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -24,6 +24,23 @@ type SidebarProps = {
 export default function Sidebar({ className, closeSidebar }: SidebarProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Detectar se é dispositivo móvel após o componente montar
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    
+    // Verificar inicialmente
+    checkIsMobile();
+    
+    // Adicionar listener para resize
+    window.addEventListener('resize', checkIsMobile);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
 
   const navigationItems = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
@@ -152,7 +169,7 @@ export default function Sidebar({ className, closeSidebar }: SidebarProps) {
         </h1>
         <button 
           onClick={handleCloseSidebar}
-          style={{...closeButtonStyle, display: window.innerWidth < 1024 ? 'flex' : 'none'}}
+          style={{...closeButtonStyle, display: isMobile ? 'flex' : 'none'}}
         >
           <X size={20} />
         </button>

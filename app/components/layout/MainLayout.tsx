@@ -88,16 +88,32 @@ export default function MainLayout({ children, tasks = [] }: MainLayoutProps) {
     paddingBottom: '3rem',
     paddingLeft: '1rem',
     paddingRight: '1rem',
-    backgroundColor: '#f9fafb',
-    ['@media (min-width: 768px)']: {
-      paddingLeft: '1.5rem',
-      paddingRight: '1.5rem',
-    },
-    ['@media (min-width: 1024px)']: {
-      paddingLeft: '2rem',
-      paddingRight: '2rem',
-    }
+    backgroundColor: '#f9fafb'
   };
+
+  // Aplicar padding responsivo baseado no tamanho da tela
+  useEffect(() => {
+    const updatePadding = () => {
+      const mainElement = document.querySelector('main');
+      if (mainElement) {
+        if (window.innerWidth >= 1024) {
+          mainElement.style.paddingLeft = '2rem';
+          mainElement.style.paddingRight = '2rem';
+        } else if (window.innerWidth >= 768) {
+          mainElement.style.paddingLeft = '1.5rem';
+          mainElement.style.paddingRight = '1.5rem';
+        } else {
+          mainElement.style.paddingLeft = '1rem';
+          mainElement.style.paddingRight = '1rem';
+        }
+      }
+    };
+    
+    updatePadding();
+    window.addEventListener('resize', updatePadding);
+    
+    return () => window.removeEventListener('resize', updatePadding);
+  }, []);
 
   const contentWrapperStyle = {
     maxWidth: '1400px',
