@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import type { Metadata } from 'next';
 import { ThemeProvider } from './components/ThemeProvider';
 import { ToastProvider } from './components/ui/toast';
+import { TanstackQueryProvider } from './providers/query-provider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -22,11 +23,13 @@ export default function RootLayout({
         backgroundColor: 'white',
         color: '#111827'
       }}>
-        <ThemeProvider>
-          <ToastProvider>
-            {children}
-          </ToastProvider>
-        </ThemeProvider>
+        <TanstackQueryProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </ThemeProvider>
+        </TanstackQueryProvider>
       </body>
     </html>
   );
