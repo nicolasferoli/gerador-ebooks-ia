@@ -983,7 +983,7 @@ export default function NewEbookPage() {
                   name="title"
                   value={formData.title}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white"
                   placeholder="Ex: Guia Completo de Programação Python"
                 />
                 {errors.title && (
@@ -1009,10 +1009,27 @@ export default function NewEbookPage() {
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white"
                   placeholder="Descreva o conteúdo do seu e-book..."
                   rows={4}
                 />
+
+                <div className="flex justify-center mt-3">
+                  <button
+                    type="button"
+                    onClick={handleGenerateDescription}
+                    className="flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white transition-colors duration-150"
+                    style={{ backgroundColor: formData.color || '#7c3aed' }}
+                    disabled={!formData.title}
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Gerar Descrição Automática com IA
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 text-center mt-1">
+                  Preencha o título primeiro e clique para gerar uma descrição automaticamente,
+                  <br />ou escreva sua própria descrição no campo acima.
+                </p>
               </div>
               
               <div>
@@ -1023,7 +1040,7 @@ export default function NewEbookPage() {
                   name="language"
                   value={formData.language}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white"
                 >
                   {languages.map(lang => (
                     <option key={lang.id} value={lang.id}>
@@ -1115,7 +1132,7 @@ export default function NewEbookPage() {
                   name="specificTopics"
                   value={formData.specificTopics}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white"
                   placeholder="Liste tópicos específicos que você gostaria de incluir, separados por vírgula..."
                   rows={3}
                 />
