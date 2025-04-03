@@ -7,8 +7,6 @@ import {
   Home,
   BookOpen,
   PlusCircle,
-  BarChart2,
-  Layout,
   Settings,
   Menu,
   X,
@@ -422,8 +420,6 @@ function NavLinks({ currentPath }: NavLinksProps) {
     { href: '/dashboard', icon: <Home size={18} />, label: 'Dashboard' },
     { href: '/ebooks', icon: <BookOpen size={18} />, label: 'Meus E-books' },
     { href: '/ebooks/new', icon: <PlusCircle size={18} />, label: 'Novo E-book' },
-    { href: '/stats', icon: <BarChart2 size={18} />, label: 'Estatísticas' },
-    { href: '/templates', icon: <Layout size={18} />, label: 'Templates' },
     { href: '/settings', icon: <Settings size={18} />, label: 'Configurações' },
   ];
 

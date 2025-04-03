@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { MainLayout } from '../components/layouts/MainLayout';
-import { BookOpen, BarChart2, Plus, Eye, ChevronRight, Search } from 'lucide-react';
+import { BookOpen, Plus, Eye, ChevronRight, Search } from 'lucide-react';
 
 // Configuração para o Next.js
 export const dynamic = 'force-dynamic';
@@ -35,8 +35,6 @@ export default function DashboardPage() {
   }, []);
 
   // Configurações responsivas para os grids
-  const statsGridCols = screenSize.isSmall ? '1fr' : 'repeat(2, 1fr)';
-  
   const ebooksGridCols = screenSize.isLarge ? 'repeat(3, 1fr)' : 
                          screenSize.isMedium ? 'repeat(2, 1fr)' : '1fr';
 
@@ -89,9 +87,6 @@ export default function DashboardPage() {
         </header>
 
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: statsGridCols,
-          gap: '1rem',
           marginBottom: '2rem',
         }}>
           <div style={{
@@ -100,6 +95,7 @@ export default function DashboardPage() {
             padding: '1.25rem',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
             border: '1px solid #f3f4f6',
+            maxWidth: '400px',
           }}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem'}}>
               <div>
@@ -126,41 +122,6 @@ export default function DashboardPage() {
               textDecoration: 'none',
             }}>
               Ver todos <ChevronRight size={16} style={{marginLeft: '0.25rem'}} />
-            </a>
-          </div>
-
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '0.5rem',
-            padding: '1.25rem',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            border: '1px solid #f3f4f6',
-          }}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem'}}>
-              <div>
-                <h3 style={{color: '#6b7280', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem'}}>Em Progresso</h3>
-                <p style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#3b82f6'}}>1</p>
-              </div>
-              <div style={{
-                padding: '0.75rem',
-                backgroundColor: '#eff6ff',
-                borderRadius: '0.375rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <BarChart2 size={18} style={{color: '#3b82f6'}} />
-              </div>
-            </div>
-            <a href="#" style={{
-              display: 'flex',
-              alignItems: 'center',
-              color: '#3b82f6',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              textDecoration: 'none',
-            }}>
-              Ver andamento <ChevronRight size={16} style={{marginLeft: '0.25rem'}} />
             </a>
           </div>
         </div>
