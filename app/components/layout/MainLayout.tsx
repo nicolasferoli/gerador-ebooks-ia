@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
-import { ToastProvider } from '../ui/toast';
 import { motion } from 'framer-motion';
 
 interface MainLayoutProps {
@@ -19,40 +18,115 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children, tasks = [] }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  // Detectar se é desktop
+  useEffect(() => {
+    const checkIsDesktop = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    
+    // Verificar na montagem
+    checkIsDesktop();
+    
+    // Adicionar listener
+    window.addEventListener('resize', checkIsDesktop);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkIsDesktop);
+  }, []);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  const containerStyle = {
+    display: 'flex',
+    height: '100vh',
+    backgroundColor: '#f9fafb',
+    overflow: 'hidden',
+  };
+
+  const overlayStyle = {
+    position: 'fixed' as const,
+    inset: 0,
+    zIndex: 20,
+    transitionProperty: 'opacity',
+    transitionDuration: '200ms',
+    transitionTimingFunction: 'ease-in-out',
+    opacity: sidebarOpen ? 0.5 : 0,
+    backgroundColor: 'black',
+    display: sidebarOpen ? 'block' : 'none',
+  };
+
+  const sidebarContainerStyle = {
+    position: isDesktop ? 'static' as const : 'fixed' as const,
+    insetY: 0,
+    left: 0,
+    zIndex: 30,
+    width: '16rem',
+    backgroundColor: '#1e293b',
+    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+    transitionProperty: 'transform',
+    transitionDuration: '300ms',
+    transitionTimingFunction: 'ease-in-out',
+    transform: sidebarOpen || isDesktop ? 'translateX(0)' : 'translateX(-100%)',
+  };
+
+  const mainContentStyle = {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    flex: '1',
+    width: '100%',
+    overflow: 'hidden',
+  };
+
+  const mainStyle = {
+    flex: 1,
+    overflow: 'auto' as const,
+    paddingTop: '2rem',
+    paddingBottom: '3rem',
+    paddingLeft: '1rem',
+    paddingRight: '1rem',
+    backgroundColor: '#f9fafb',
+    ['@media (min-width: 768px)']: {
+      paddingLeft: '1.5rem',
+      paddingRight: '1.5rem',
+    },
+    ['@media (min-width: 1024px)']: {
+      paddingLeft: '2rem',
+      paddingRight: '2rem',
+    }
+  };
+
+  const contentWrapperStyle = {
+    maxWidth: '1400px',
+    margin: '0 auto',
+  };
+
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-slate-900 overflow-hidden">
+    <div style={containerStyle}>
       {/* Sidebar para mobile com overlay */}
       <div
-        className={`fixed inset-0 z-20 transition-opacity duration-200 ease-in-out ${
-          sidebarOpen ? 'opacity-50 bg-black block' : 'opacity-0 hidden'
-        }`}
+        style={overlayStyle}
         onClick={() => setSidebarOpen(false)}
       />
 
       {/* Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-slate-800 shadow-lg transition-transform duration-300 ease-in-out transform lg:translate-x-0 lg:static lg:inset-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
+      <div style={sidebarContainerStyle}>
         <Sidebar closeSidebar={() => setSidebarOpen(false)} />
       </div>
 
       {/* Conteúdo principal */}
-      <div className="flex flex-col flex-1 w-full overflow-hidden">
+      <div style={mainContentStyle}>
         <Header toggleSidebar={toggleSidebar} tasks={tasks} />
         
-        <main className="flex-1 overflow-y-auto pt-8 px-4 md:px-6 lg:px-8 pb-12 bg-gray-50 dark:bg-slate-900">
+        <main style={mainStyle}>
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="max-w-7xl mx-auto"
+            style={contentWrapperStyle}
           >
             {children}
           </motion.div>

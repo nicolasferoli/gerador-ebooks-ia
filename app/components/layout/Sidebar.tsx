@@ -14,7 +14,6 @@ import {
   X,
   LogOut
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
 import { motion } from 'framer-motion';
 
 type SidebarProps = {
@@ -29,7 +28,7 @@ export default function Sidebar({ className, closeSidebar }: SidebarProps) {
   const navigationItems = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Meus E-books', href: '/ebooks', icon: Book },
-    { name: 'Novo E-book', href: '/new-ebook', icon: Plus },
+    { name: 'Novo E-book', href: '/ebooks/new', icon: Plus },
     { name: 'Estatísticas', href: '/stats', icon: BarChart3 },
     { name: 'Templates', href: '/templates', icon: FileText },
     { name: 'Configurações', href: '/account', icon: Settings },
@@ -46,34 +45,122 @@ export default function Sidebar({ className, closeSidebar }: SidebarProps) {
     setMobileMenuOpen(false);
   };
 
+  const sidebarStyle = {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    height: '100%',
+    zIndex: 40,
+    background: 'linear-gradient(to bottom, #7c3aed, #4c1d95)',
+    color: 'white',
+    width: '16rem',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    overflow: 'hidden'
+  };
+
+  const logoContainerStyle = {
+    padding: '1.5rem',
+    borderBottom: '1px solid rgba(124, 58, 237, 0.5)',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  };
+
+  const logoTextStyle = {
+    fontSize: '1.25rem',
+    fontWeight: 'bold',
+    background: 'linear-gradient(to right, white, #e9d5ff)',
+    backgroundClip: 'text',
+    WebkitBackgroundClip: 'text' as const,
+    WebkitTextFillColor: 'transparent',
+    color: 'transparent'
+  };
+
+  const closeButtonStyle = {
+    padding: '0.5rem',
+    borderRadius: '9999px',
+    backgroundColor: 'rgba(124, 58, 237, 0.5)',
+    border: 'none',
+    color: 'white',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  };
+
+  const navStyle = {
+    flex: '1',
+    overflowY: 'auto' as const,
+    padding: '1rem'
+  };
+
+  const navListStyle = {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '0.5rem'
+  };
+
+  const getNavItemStyle = (isActive: boolean) => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    padding: '0.75rem',
+    borderRadius: '0.5rem',
+    transition: 'all 200ms',
+    backgroundColor: isActive ? 'rgba(124, 58, 237, 0.7)' : 'transparent',
+    fontWeight: isActive ? 'medium' : 'normal',
+    boxShadow: isActive ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
+    color: 'white',
+    textDecoration: 'none'
+  });
+
+  const footerStyle = {
+    padding: '1rem',
+    borderTop: '1px solid rgba(124, 58, 237, 0.5)',
+    marginTop: 'auto'
+  };
+
+  const logoutButtonStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.75rem',
+    width: '100%',
+    borderRadius: '0.5rem',
+    backgroundColor: 'rgba(124, 58, 237, 0.3)',
+    color: 'white',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'background-color 200ms',
+    fontWeight: 'medium',
+    fontSize: '0.875rem'
+  };
+
   return (
     <motion.aside
       initial={{ x: -300 }}
       animate={{ x: 0 }}
       transition={{ type: "spring", stiffness: 260, damping: 20 }}
-      className={cn(
-        "fixed top-0 left-0 h-full z-40",
-        "bg-gradient-to-b from-purple-800 to-purple-950 text-slate-50 w-64 shadow-xl",
-        "flex flex-col overflow-hidden",
-        className
-      )}
+      style={sidebarStyle}
     >
       {/* Logo */}
-      <div className="p-6 border-b border-purple-700/50 flex justify-between items-center">
-        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-purple-200">
+      <div style={logoContainerStyle}>
+        <h1 style={logoTextStyle}>
           Gerador de E-books
         </h1>
         <button 
           onClick={handleCloseSidebar}
-          className="lg:hidden p-2 rounded-full hover:bg-purple-700/50"
+          style={{...closeButtonStyle, display: window.innerWidth < 1024 ? 'flex' : 'none'}}
         >
           <X size={20} />
         </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-4">
-        <ul className="space-y-2">
+      <nav style={navStyle}>
+        <ul style={navListStyle}>
           {navigationItems.map((item, index) => {
             const isActive = pathname === item.href;
             return (
@@ -85,16 +172,10 @@ export default function Sidebar({ className, closeSidebar }: SidebarProps) {
               >
                 <Link
                   href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 p-3 rounded-lg transition-all duration-200",
-                    "hover:bg-purple-700 hover:shadow-md",
-                    isActive 
-                      ? "bg-purple-700 font-medium shadow-md" 
-                      : "bg-transparent"
-                  )}
+                  style={getNavItemStyle(isActive)}
                   onClick={handleCloseSidebar}
                 >
-                  <item.icon size={20} className={isActive ? "text-white" : "text-purple-200"} />
+                  <item.icon size={20} style={{ color: isActive ? 'white' : 'rgba(233, 213, 255, 0.8)' }} />
                   <span>{item.name}</span>
                 </Link>
               </motion.li>
@@ -108,9 +189,9 @@ export default function Sidebar({ className, closeSidebar }: SidebarProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="p-4 border-t border-purple-700/50 mt-auto"
+        style={footerStyle}
       >
-        <button className="flex items-center gap-2 p-3 w-full rounded-lg hover:bg-purple-700/70 transition-colors">
+        <button style={logoutButtonStyle}>
           <LogOut size={20} />
           <span>Sair</span>
         </button>

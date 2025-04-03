@@ -1,11 +1,9 @@
 'use client';
 
 import React from 'react';
-import { RealTimeNotification } from '../ui/real-time-notification';
 import { useRouter } from 'next/navigation';
 import { User, Menu, Bell, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 
 type HeaderProps = {
   className?: string;
@@ -19,62 +17,185 @@ type HeaderProps = {
   }>;
 };
 
-export default function Header({ className, toggleSidebar, tasks = [] }: HeaderProps) {
+export default function Header({ toggleSidebar, tasks = [] }: HeaderProps) {
   const router = useRouter();
   
-  const handleTaskClick = (taskId: string) => {
-    // Navegar para a página de detalhes da tarefa ou ebook
-    router.push(`/ebooks/${taskId}`);
+  const hasActiveTasks = tasks && tasks.length > 0 && tasks.some(task => task.status === 'processing');
+  
+  const headerStyle = {
+    position: 'sticky' as const,
+    top: 0,
+    zIndex: 20,
+    backgroundColor: 'white',
+    borderBottom: '1px solid #e5e7eb',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
   };
   
+  const headerContentStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '0.75rem 1rem',
+    margin: '0 auto',
+    maxWidth: '1400px'
+  };
+  
+  const leftSectionStyle = {
+    display: 'flex',
+    alignItems: 'center'
+  };
+  
+  const menuButtonStyle = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '0.5rem',
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: '#6b7280',
+    borderRadius: '0.375rem',
+    cursor: 'pointer'
+  };
+  
+  const searchContainerStyle = {
+    position: 'relative' as const,
+    marginLeft: '1rem'
+  };
+  
+  const searchInputStyle = {
+    width: '100%',
+    paddingLeft: '2.5rem',
+    paddingRight: '0.75rem',
+    paddingTop: '0.5rem',
+    paddingBottom: '0.5rem',
+    borderRadius: '0.375rem',
+    border: '1px solid #e5e7eb',
+    backgroundColor: '#f9fafb',
+    fontSize: '0.875rem'
+  };
+  
+  const searchIconStyle = {
+    position: 'absolute' as const,
+    left: '0.75rem',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    color: '#9ca3af',
+    pointerEvents: 'none' as const
+  };
+  
+  const rightSectionStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem'
+  };
+  
+  const notificationButtonStyle = {
+    position: 'relative' as const,
+    display: 'inline-flex',
+    padding: '0.5rem',
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: '#6b7280',
+    borderRadius: '0.5rem',
+    cursor: 'pointer'
+  };
+  
+  const notificationBadgeStyle = {
+    position: 'absolute' as const,
+    top: '0',
+    right: '0',
+    width: '0.625rem',
+    height: '0.625rem',
+    borderRadius: '9999px',
+    backgroundColor: '#ef4444',
+    border: '2px solid white'
+  };
+  
+  const userContainerStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem'
+  };
+  
+  const avatarStyle = {
+    width: '2.25rem',
+    height: '2.25rem',
+    borderRadius: '9999px',
+    backgroundColor: '#f3f4f6',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#6b7280'
+  };
+  
+  const userInfoStyle = {
+    display: 'none',
+    '@media (min-width: 768px)': {
+      display: 'block'
+    }
+  };
+  
+  const userNameStyle = {
+    fontWeight: 'medium',
+    color: '#111827',
+    fontSize: '0.875rem'
+  };
+  
+  const userRoleStyle = {
+    color: '#6b7280',
+    fontSize: '0.75rem'
+  };
+
   return (
-    <motion.header 
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className={`px-4 md:px-6 lg:px-8 py-4 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm ${className}`}
-    >
-      <div className="flex justify-between items-center max-w-7xl mx-auto">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={toggleSidebar}
-            className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-slate-700 lg:hidden"
-            aria-label="Toggle Menu"
+    <header style={headerStyle}>
+      <div style={headerContentStyle}>
+        <div style={leftSectionStyle}>
+          <button 
+            onClick={toggleSidebar} 
+            style={menuButtonStyle}
+            aria-label="Toggle sidebar"
           >
-            <Menu size={20} />
+            <Menu size={24} />
           </button>
           
-          <div className="relative hidden md:flex items-center">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={18} />
+          <div 
+            style={searchContainerStyle}
+            className="hidden md:block"
+          >
+            <div style={searchIconStyle}>
+              <Search size={16} />
+            </div>
             <input 
               type="text" 
               placeholder="Pesquisar..." 
-              className="pl-10 pr-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 w-64 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all"
+              style={searchInputStyle}
+              className="w-64"
             />
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
-          <RealTimeNotification 
-            tasks={tasks} 
-            onTaskClick={handleTaskClick} 
-          />
+        <div style={rightSectionStyle}>
+          <button 
+            style={notificationButtonStyle}
+            aria-label="Notificações"
+          >
+            <Bell size={20} />
+            {hasActiveTasks && (
+              <span style={notificationBadgeStyle}></span>
+            )}
+          </button>
           
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Usuário</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">usuario@exemplo.com</p>
+          <div style={userContainerStyle}>
+            <div style={avatarStyle}>
+              <User size={20} />
             </div>
-            
-            <motion.div 
-              whileHover={{ scale: 1.05 }}
-              className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center overflow-hidden cursor-pointer"
-            >
-              <User className="h-5 w-5 text-purple-700 dark:text-purple-400" />
-            </motion.div>
+            <div style={{...userInfoStyle, display: 'none', '@media (min-width: 768px)': { display: 'block' }}}>
+              <div style={userNameStyle}>Usuário</div>
+              <div style={userRoleStyle}>Autor</div>
+            </div>
           </div>
         </div>
       </div>
-    </motion.header>
+    </header>
   );
 } 
