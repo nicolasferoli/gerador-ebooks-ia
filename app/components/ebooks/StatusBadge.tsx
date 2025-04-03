@@ -1,69 +1,86 @@
 'use client';
 
 import React from 'react';
-import { Clock, Check, AlertCircle, FileText } from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { EbookStatus } from '../../types/ebook';
+import { Check, Clock, FileText } from 'lucide-react';
 
 interface StatusBadgeProps {
-  status: EbookStatus;
-  progress?: number;
-  className?: string;
+  status: string;
+  size?: 'default' | 'lg';
 }
 
-export function StatusBadge({ status, progress = 0, className }: StatusBadgeProps) {
-  // Determinar o estilo e o ícone com base no status
-  const getBadgeStyles = () => {
-    switch (status) {
-      case 'completed':
-        return {
-          icon: <Check className="w-3 h-3 mr-1" />,
-          text: "Concluído",
-          className: "bg-green-100 text-green-800"
-        };
-      case 'failed':
-        return {
-          icon: <AlertCircle className="w-3 h-3 mr-1" />,
-          text: "Falha",
-          className: "bg-red-100 text-red-800"
-        };
-      case 'draft':
-        return {
-          icon: <FileText className="w-3 h-3 mr-1" />,
-          text: "Rascunho",
-          className: "bg-gray-100 text-gray-800"
-        };
-      case 'generating_toc':
-      case 'generating_chapters':
-      case 'generating_cover':
-        return {
-          icon: <Clock className="w-3 h-3 mr-1 animate-spin" />,
-          text: status === 'generating_toc' 
-            ? "Gerando sumário" 
-            : status === 'generating_chapters' 
-              ? `Gerando capítulos (${Math.round(progress)}%)` 
-              : "Criando capa",
-          className: "bg-purple-100 text-purple-800"
-        };
-      default:
-        return {
-          icon: <Clock className="w-3 h-3 mr-1" />,
-          text: "Processando",
-          className: "bg-gray-100 text-gray-800"
-        };
-    }
+export function StatusBadge({ status, size = 'default' }: StatusBadgeProps) {
+  const baseStyle = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    borderRadius: '9999px',
+    fontWeight: 'medium',
+    padding: size === 'lg' ? '0.375rem 0.75rem' : '0.25rem 0.5rem',
+    fontSize: size === 'lg' ? '0.875rem' : '0.75rem',
   };
 
-  const { icon, text, className: statusClassName } = getBadgeStyles();
+  const getStyles = () => {
+    if (status === 'completed' || status === 'Concluído') {
+      return {
+        ...baseStyle,
+        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        color: '#15803d',
+      };
+    }
+    
+    if (status === 'generating_chapters' || status === 'generating_toc' || 
+        status === 'generating_cover' || status === 'Em Progresso') {
+      return {
+        ...baseStyle,
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        color: '#1d4ed8',
+      };
+    }
+    
+    // Default/Draft
+    return {
+      ...baseStyle,
+      backgroundColor: 'rgba(107, 114, 128, 0.1)',
+      color: '#4b5563',
+    };
+  };
+
+  const iconStyle = {
+    width: '0.875rem',
+    height: '0.875rem',
+    marginRight: '0.25rem',
+  };
+
+  const renderContent = () => {
+    if (status === 'completed' || status === 'Concluído') {
+      return (
+        <>
+          <Check style={iconStyle} />
+          <span>Concluído</span>
+        </>
+      );
+    }
+    
+    if (status === 'generating_chapters' || status === 'generating_toc' || 
+        status === 'generating_cover' || status === 'Em Progresso') {
+      return (
+        <>
+          <Clock style={{...iconStyle, animation: 'spin 2s linear infinite'}} />
+          <span>Em Progresso</span>
+        </>
+      );
+    }
+    
+    return (
+      <>
+        <FileText style={iconStyle} />
+        <span>Rascunho</span>
+      </>
+    );
+  };
 
   return (
-    <span className={cn(
-      "px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center", 
-      statusClassName,
-      className
-    )}>
-      {icon}
-      {text}
+    <span style={getStyles()}>
+      {renderContent()}
     </span>
   );
 } 

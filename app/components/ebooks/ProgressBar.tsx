@@ -1,60 +1,55 @@
 'use client';
 
 import React from 'react';
-import { Progress } from '../../components/ui/progress';
-import { cn } from '../../lib/utils';
 
 interface ProgressBarProps {
-  value: number;
-  label?: string;
-  showPercentage?: boolean;
+  progress: number;
   className?: string;
-  height?: 'sm' | 'md' | 'lg';
-  animated?: boolean;
-  color?: 'default' | 'purple' | 'blue' | 'green';
 }
 
-export function ProgressBar({
-  value,
-  label,
-  showPercentage = true,
-  className,
-  height = 'md',
-  animated = true,
-  color = 'purple'
-}: ProgressBarProps) {
-  const heightClasses = {
-    sm: 'h-1.5',
-    md: 'h-2',
-    lg: 'h-3'
+export function ProgressBar({ progress, className = "" }: ProgressBarProps) {
+  const containerStyle = {
+    ...className && { marginTop: className.includes('mt-4') ? '1rem' : '' }
   };
 
-  const colorClasses = {
-    default: 'bg-slate-600',
-    purple: 'bg-purple-600',
-    blue: 'bg-blue-600',
-    green: 'bg-green-600'
+  const labelContainerStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '0.75rem',
+    marginBottom: '0.25rem'
   };
 
-  const roundedPercentage = Math.round(value);
+  const labelStyle = {
+    color: '#6b7280'
+  };
+
+  const valueStyle = {
+    fontWeight: 'medium'
+  };
+
+  const trackStyle = {
+    height: '0.375rem',
+    backgroundColor: '#e5e7eb',
+    borderRadius: '9999px',
+    overflow: 'hidden'
+  };
+
+  const indicatorStyle = {
+    height: '100%',
+    backgroundColor: '#7c3aed',
+    borderRadius: '9999px',
+    width: `${progress}%`
+  };
 
   return (
-    <div className={cn('w-full', className)}>
-      {(label || showPercentage) && (
-        <div className="flex justify-between text-xs mb-1">
-          {label && <span>{label}</span>}
-          {showPercentage && <span>{roundedPercentage}%</span>}
-        </div>
-      )}
-      <Progress 
-        value={value} 
-        className={cn('w-full bg-gray-200 rounded-full dark:bg-gray-700', heightClasses[height])} 
-        indicatorClassName={cn(
-          colorClasses[color], 
-          animated && 'animate-pulse',
-          'transition-all duration-300 ease-in-out'
-        )}
-      />
+    <div style={containerStyle}>
+      <div style={labelContainerStyle}>
+        <span style={labelStyle}>Progresso</span>
+        <span style={valueStyle}>{progress}%</span>
+      </div>
+      <div style={trackStyle}>
+        <div style={indicatorStyle} />
+      </div>
     </div>
   );
 } 
