@@ -37,7 +37,11 @@ export async function generateEbookChapter(
   title: string,
   description: string,
   chapterTitle: string,
-  previousChapterContent?: string
+  previousChapterContent?: string,
+  options?: {
+    model?: string;
+    signal?: AbortSignal;
+  }
 ): Promise<string> {
   try {
     const systemPrompt = `Você é um assistente especializado em escrever conteúdo de alta qualidade para e-books.`;
@@ -50,15 +54,17 @@ export async function generateEbookChapter(
     
     userPrompt += `\n\nFormate o conteúdo em HTML simples com tags <h1>, <h2>, <p>, <ul>, <li>, etc., quando apropriado.`;
 
+    const requestOptions = options?.signal ? { signal: options.signal } : undefined;
+
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: options?.model || "gpt-4",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
       temperature: 0.7,
       max_tokens: 2000,
-    });
+    }, requestOptions);
 
     return response.choices[0].message.content?.trim() || '';
   } catch (error) {
@@ -69,11 +75,17 @@ export async function generateEbookChapter(
 
 export async function generateTableOfContents(
   title: string, 
-  description: string
+  description: string,
+  options?: {
+    model?: string;
+    signal?: AbortSignal;
+  }
 ): Promise<string[]> {
   try {
+    const requestOptions = options?.signal ? { signal: options.signal } : undefined;
+
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: options?.model || "gpt-4",
       messages: [
         {
           role: "system",
@@ -88,7 +100,7 @@ export async function generateTableOfContents(
       ],
       temperature: 0.7,
       max_tokens: 500,
-    });
+    }, requestOptions);
 
     const content = response.choices[0].message.content?.trim() || '';
     
@@ -102,6 +114,38 @@ export async function generateTableOfContents(
     return chapters;
   } catch (error) {
     console.error('Erro ao gerar sumário do e-book:', error);
-    throw new Error('Falha ao gerar estrutura de capítulos');
+    throw error;
+  }
+}
+
+export async function generateCoverImage(
+  title: string,
+  description: string,
+  options?: {
+    size?: "1024x1024" | "1792x1024" | "1024x1792";
+    signal?: AbortSignal;
+  }
+): Promise<string> {
+  try {
+    const prompt = `Uma capa de e-book moderna e profissional para o livro intitulado "${title}". 
+    Descrição do livro: "${description}".
+    A capa deve ser visualmente impactante, com tipografia clara e elementos de design minimalista.
+    Sem texto ou palavras visíveis além do título.`;
+
+    const requestOptions = options?.signal ? { signal: options.signal } : undefined;
+
+    const response = await openai.images.generate({
+      model: "dall-e-3",
+      prompt,
+      n: 1,
+      size: options?.size || "1024x1024",
+      quality: "standard",
+      response_format: "url",
+    }, requestOptions);
+
+    return response.data[0].url || '';
+  } catch (error) {
+    console.error('Erro ao gerar capa do e-book:', error);
+    throw error;
   }
 } 

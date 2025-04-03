@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { generateEbookChapter } from '../../../../../lib/openai';
+import { rateLimit } from '../../../../../lib/rate-limit';
 
 export async function POST(
   request: NextRequest,
@@ -11,9 +12,9 @@ export async function POST(
     const ebookId = params.id;
     const chapterNumber = parseInt(params.number, 10);
 
-    if (!ebookId || isNaN(chapterNumber)) {
+    if (!ebookId || isNaN(chapterNumber) || chapterNumber < 1) {
       return NextResponse.json(
-        { error: 'ID do e-book e número do capítulo válidos são obrigatórios' },
+        { error: 'ID do e-book e número de capítulo são obrigatórios' },
         { status: 400 }
       );
     }
@@ -31,12 +32,37 @@ export async function POST(
       );
     }
     
+    const userId = session.user.id;
+    
+    // Verificar rate limit (30 gerações de capítulos por dia)
+    const identifier = `user_${userId}_generate_chapter`;
+    const { success, limit, remaining, reset } = await rateLimit(identifier, 30, 24 * 60 * 60);
+    
+    if (!success) {
+      return NextResponse.json(
+        { 
+          error: 'Limite de geração de capítulos excedido. Tente novamente mais tarde.',
+          limit,
+          remaining,
+          reset: new Date(reset).toISOString()
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': limit.toString(),
+            'X-RateLimit-Remaining': remaining.toString(),
+            'X-RateLimit-Reset': reset.toString()
+          }
+        }
+      );
+    }
+    
     // Obter dados do e-book
     const { data: ebook, error: ebookError } = await supabase
       .from('ebooks')
       .select('*')
       .eq('id', ebookId)
-      .eq('user_id', session.user.id)
+      .eq('user_id', userId)
       .single();
       
     if (ebookError || !ebook) {
@@ -46,15 +72,18 @@ export async function POST(
       );
     }
     
-    // Verificar se o e-book está em processo de geração de capítulos
+    // Verificar se o e-book está no estado correto para gerar capítulos
     if (ebook.status !== 'generating_chapters') {
       return NextResponse.json(
-        { error: 'O e-book não está em processo de geração de capítulos.' },
+        { 
+          error: 'O e-book não está no estado correto para geração de capítulos.',
+          status: ebook.status 
+        },
         { status: 400 }
       );
     }
     
-    // Obter o capítulo atual
+    // Obter dados do capítulo
     const { data: chapter, error: chapterError } = await supabase
       .from('chapters')
       .select('*')
@@ -72,153 +101,145 @@ export async function POST(
     // Verificar se o capítulo já foi gerado
     if (chapter.status === 'completed') {
       return NextResponse.json(
-        { message: 'Este capítulo já foi gerado.' },
+        { 
+          message: 'Este capítulo já foi gerado.',
+          chapter 
+        },
         { status: 200 }
       );
     }
     
-    // Atualizar status do capítulo
-    await supabase
-      .from('chapters')
-      .update({ status: 'generating' })
-      .eq('id', chapter.id);
-      
-    // Iniciar processo de geração assíncrono
-    generateChapter(ebookId, chapterNumber, supabase).catch(console.error);
-    
-    return NextResponse.json({
-      message: `Geração do capítulo ${chapterNumber} iniciada com sucesso.`,
-      chapterId: chapter.id
-    });
-  } catch (error) {
-    console.error('Erro ao processar solicitação:', error);
-    return NextResponse.json(
-      { error: 'Erro interno do servidor.' },
-      { status: 500 }
-    );
-  }
-}
-
-// Função para geração assíncrona do capítulo
-async function generateChapter(
-  ebookId: string,
-  chapterNumber: number,
-  supabase: any
-) {
-  try {
-    // Obter dados do e-book
-    const { data: ebook, error: ebookError } = await supabase
-      .from('ebooks')
-      .select('*')
-      .eq('id', ebookId)
-      .single();
-      
-    if (ebookError || !ebook) {
-      throw new Error('E-book não encontrado');
+    // Verificar se o capítulo já está sendo gerado
+    if (chapter.status === 'generating') {
+      return NextResponse.json(
+        { 
+          message: 'Este capítulo já está em processo de geração.' 
+        },
+        { status: 200 }
+      );
     }
     
-    // Obter capítulo atual
-    const { data: chapter, error: chapterError } = await supabase
-      .from('chapters')
-      .select('*')
-      .eq('ebook_id', ebookId)
-      .eq('number', chapterNumber)
-      .single();
-      
-    if (chapterError || !chapter) {
-      throw new Error('Capítulo não encontrado');
-    }
-    
-    // Obter capítulo anterior para continuidade (se não for o primeiro)
-    let previousChapterContent: string | undefined;
-    
+    // Obter o capítulo anterior, se existir
+    let previousChapterContent: string | undefined = undefined;
     if (chapterNumber > 1) {
-      const { data: prevChapter, error: prevChapterError } = await supabase
+      const { data: previousChapter } = await supabase
         .from('chapters')
         .select('content')
         .eq('ebook_id', ebookId)
         .eq('number', chapterNumber - 1)
         .single();
         
-      if (!prevChapterError && prevChapter) {
-        previousChapterContent = prevChapter.content;
+      if (previousChapter && previousChapter.content) {
+        previousChapterContent = previousChapter.content;
       }
     }
     
-    // Gerar conteúdo do capítulo
-    const content = await generateEbookChapter(
-      ebook.title,
-      ebook.description,
-      chapter.title,
-      previousChapterContent
-    );
-    
-    // Atualizar capítulo com o conteúdo gerado
+    // Atualizar status do capítulo para 'generating'
     await supabase
       .from('chapters')
       .update({
-        content,
-        status: 'completed'
+        status: 'generating',
       })
       .eq('id', chapter.id);
-    
-    // Obter total de capítulos
-    const { data: chaptersCount, error: countError } = await supabase
-      .from('chapters')
-      .select('id', { count: 'exact' })
-      .eq('ebook_id', ebookId);
       
-    if (countError) {
-      throw countError;
-    }
+    // Criar um AbortController para limitar o tempo de geração
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutos
     
-    // Calcular progresso
-    const totalChapters = chaptersCount.length;
-    const progress = Math.round((chapterNumber / totalChapters) * 100);
-    
-    // Atualizar progresso do e-book
-    await supabase
-      .from('ebooks')
-      .update({ progress })
-      .eq('id', ebookId);
-    
-    // Se for o último capítulo, atualizar status
-    if (chapterNumber === totalChapters) {
+    try {
+      // Gerar conteúdo do capítulo
+      const content = await generateEbookChapter(
+        ebook.title,
+        ebook.description,
+        chapter.title,
+        previousChapterContent,
+        { signal: controller.signal, model: 'gpt-4o-mini' }
+      );
+      
+      clearTimeout(timeoutId);
+      
+      // Atualizar o capítulo com o conteúdo gerado
+      await supabase
+        .from('chapters')
+        .update({
+          content,
+          status: 'completed',
+        })
+        .eq('id', chapter.id);
+        
+      // Atualizar o progresso do e-book
+      const { data: totalChapters } = await supabase
+        .from('chapters')
+        .select('id', { count: 'exact' })
+        .eq('ebook_id', ebookId);
+        
+      const { data: completedChapters } = await supabase
+        .from('chapters')
+        .select('id', { count: 'exact' })
+        .eq('ebook_id', ebookId)
+        .eq('status', 'completed');
+        
+      const totalCount = totalChapters?.length || 0;
+      const completedCount = completedChapters?.length || 0;
+      
+      const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+      
+      // Se todos os capítulos foram concluídos, mudar o status para 'generating_cover'
+      const newStatus = progress === 100 ? 'generating_cover' : 'generating_chapters';
+      
       await supabase
         .from('ebooks')
         .update({
-          status: 'generating_cover'
+          status: newStatus,
+          progress,
         })
         .eq('id', ebookId);
         
-      // Iniciar geração da capa
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/ebooks/${ebookId}/generate-cover`, {
-        method: 'POST'
+      return NextResponse.json({
+        message: 'Capítulo gerado com sucesso',
+        chapter: { ...chapter, content, status: 'completed' },
+        progress,
+        ebook_status: newStatus
       });
-    } else {
-      // Se não for o último, iniciar geração do próximo capítulo
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/ebooks/${ebookId}/generate-chapter/${chapterNumber + 1}`, {
-        method: 'POST'
-      });
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      
+      console.error('Erro ao gerar capítulo:', error);
+      
+      // Verificar se foi um erro de timeout
+      if (error.name === 'AbortError') {
+        // Atualizar status do capítulo para 'failed'
+        await supabase
+          .from('chapters')
+          .update({
+            status: 'failed',
+          })
+          .eq('id', chapter.id);
+          
+        return NextResponse.json(
+          { error: 'Tempo limite excedido ao gerar o capítulo.' },
+          { status: 408 }
+        );
+      }
+      
+      // Outros erros
+      await supabase
+        .from('chapters')
+        .update({
+          status: 'failed',
+        })
+        .eq('id', chapter.id);
+        
+      return NextResponse.json(
+        { error: 'Erro ao gerar capítulo.' },
+        { status: 500 }
+      );
     }
   } catch (error) {
-    console.error(`Erro na geração do capítulo ${chapterNumber}:`, error);
-    
-    // Atualizar status do capítulo em caso de falha
-    await supabase
-      .from('chapters')
-      .update({
-        status: 'failed'
-      })
-      .eq('ebook_id', ebookId)
-      .eq('number', chapterNumber);
-      
-    // Atualizar status do e-book em caso de falha
-    await supabase
-      .from('ebooks')
-      .update({
-        status: 'failed'
-      })
-      .eq('id', ebookId);
+    console.error('Erro ao processar solicitação:', error);
+    return NextResponse.json(
+      { error: 'Erro interno do servidor.' },
+      { status: 500 }
+    );
   }
 } 

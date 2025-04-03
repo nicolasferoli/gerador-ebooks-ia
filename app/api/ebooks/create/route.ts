@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { generateEbookTitle } from '../../../lib/openai';
+import { rateLimit } from '../../../lib/rate-limit';
 
 export async function POST(request: Request) {
   try {
     const requestData = await request.json();
-    const { title, description, templateId, chapterTitles } = requestData;
+    const { title, description, templateId } = requestData;
 
     // Verificar se os campos obrigatórios foram fornecidos
     if (!description) {
@@ -30,6 +31,29 @@ export async function POST(request: Request) {
     }
     
     const userId = session.user.id;
+    
+    // Verificar rate limit (5 ebooks por hora)
+    const identifier = `user_${userId}_create_ebook`;
+    const { success, limit, remaining, reset } = await rateLimit(identifier, 5);
+    
+    if (!success) {
+      return NextResponse.json(
+        { 
+          error: 'Limite de criação de e-books excedido. Tente novamente mais tarde.',
+          limit,
+          remaining,
+          reset: new Date(reset).toISOString()
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': limit.toString(),
+            'X-RateLimit-Remaining': remaining.toString(),
+            'X-RateLimit-Reset': reset.toString()
+          }
+        }
+      );
+    }
     
     // Verificar créditos do usuário
     const { data: profile, error: profileError } = await supabase
@@ -58,7 +82,7 @@ export async function POST(request: Request) {
       finalTitle = await generateEbookTitle(description);
     }
     
-    // Criar novo e-book
+    // Criar novo e-book com status "initializing"
     const { data: ebook, error: ebookError } = await supabase
       .from('ebooks')
       .insert({
@@ -66,7 +90,7 @@ export async function POST(request: Request) {
         title: finalTitle,
         description,
         template_id: templateId || null,
-        status: 'draft',
+        status: 'initializing',
         progress: 0,
         toc_generated: false,
       })
@@ -81,39 +105,19 @@ export async function POST(request: Request) {
       );
     }
     
-    // Se foram fornecidos títulos de capítulos, criar capítulos
-    if (chapterTitles && Array.isArray(chapterTitles) && chapterTitles.length > 0) {
-      const chapters = chapterTitles.map((title, index) => ({
-        ebook_id: ebook.id,
-        title,
-        number: index + 1,
-        content: '',
-        status: 'pending',
-      }));
-      
-      const { error: chaptersError } = await supabase
-        .from('chapters')
-        .insert(chapters);
-        
-      if (chaptersError) {
-        console.error('Erro ao criar capítulos:', chaptersError);
-        // Não falhar a requisição, apenas logar o erro
-      } else {
-        // Atualizar e-book para indicar que o sumário foi gerado
-        await supabase
-          .from('ebooks')
-          .update({ toc_generated: true })
-          .eq('id', ebook.id);
-      }
-    }
-    
     // Deduzir um crédito do usuário
     await supabase
       .from('profiles')
       .update({ credits: profile.credits - 1 })
       .eq('id', userId);
     
-    return NextResponse.json(ebook, { status: 201 });
+    // Retornar apenas o ID e informações essenciais do ebook
+    return NextResponse.json({
+      id: ebook.id,
+      title: ebook.title,
+      status: ebook.status,
+      message: 'E-book criado com sucesso. Agora você pode gerar o sumário.'
+    }, { status: 201 });
   } catch (error) {
     console.error('Erro ao processar solicitação:', error);
     return NextResponse.json(
