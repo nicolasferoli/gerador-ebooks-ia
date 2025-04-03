@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node tailwind.build.js && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "clean": "rm -rf .next && next dev"
@@ -44,7 +44,6 @@
     "eslint-config-next": "15.2.4",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.3",
-    "tailwindcss-animate": "^1.0.7",
     "typescript": "^5"
   }
 }

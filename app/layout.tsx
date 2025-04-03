@@ -19,6 +19,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <link rel="stylesheet" href="/css/styles.css" />
+      </head>
       <body className={inter.className} style={{
         backgroundColor: 'white',
         color: '#111827'
