@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -104,7 +104,11 @@ export default function NewEbookPage() {
     message: 'Inicializando seu e-book...',
     progress: 0,
     currentChapter: 0,
-    ebook: null as any
+    startTime: 0,
+    timeRemaining: 0,
+    logs: [] as {text: string, timestamp: number, type: 'info' | 'success' | 'error' | 'warning'}[],
+    ebook: null as any,
+    error: null as {message: string, step: string, chapterNumber?: number} | null
   });
 
   // Estado de validação
@@ -114,6 +118,33 @@ export default function NewEbookPage() {
     color: ''
   });
   
+  // Função para calcular tempo restante
+  const updateTimeRemaining = useCallback(() => {
+    if (!progressModal.show || progressModal.status === 'completed' || progressModal.status === 'failed') return;
+    
+    const elapsedSeconds = Math.floor((Date.now() - progressModal.startTime) / 1000);
+    if (progressModal.progress > 5) { // Esperar um pouco para ter uma estimativa melhor
+      const totalEstimatedSeconds = (elapsedSeconds / progressModal.progress) * 100;
+      const remainingSeconds = totalEstimatedSeconds - elapsedSeconds;
+      
+      setProgressModal(prev => ({
+        ...prev,
+        timeRemaining: remainingSeconds
+      }));
+    }
+  }, [progressModal.show, progressModal.progress, progressModal.startTime, progressModal.status]);
+
+  // Atualizar tempo restante a cada 5 segundos
+  useEffect(() => {
+    if (!progressModal.show) return;
+    
+    const timer = setInterval(() => {
+      updateTimeRemaining();
+    }, 5000);
+    
+    return () => clearInterval(timer);
+  }, [progressModal.show, updateTimeRemaining]);
+  
   // Mutação para criar o e-book
   const createEbookMutation = useMutation({
     mutationFn: () => ebookApi.createEbook({
@@ -122,18 +153,44 @@ export default function NewEbookPage() {
       templateId: formData.templateId
     }),
     onSuccess: (ebook) => {
+      const timestamp = Date.now();
       setProgressModal(prev => ({
         ...prev,
         ebook,
         show: true,
         status: 'created',
-        message: 'E-book criado com sucesso. Iniciando geração do sumário...'
+        message: 'E-book criado com sucesso. Iniciando geração do sumário...',
+        startTime: timestamp,
+        logs: [
+          ...prev.logs,
+          {
+            text: 'E-book criado com sucesso!',
+            timestamp,
+            type: 'success'
+          }
+        ]
       }));
       startEbookGeneration(ebook.id);
     },
     onError: (error: Error) => {
       console.error('Erro ao criar e-book:', error);
-      alert(`Erro ao criar e-book: ${error.message}`);
+      setProgressModal(prev => ({
+        ...prev,
+        show: true,
+        status: 'failed',
+        error: {
+          message: error.message,
+          step: 'create'
+        },
+        logs: [
+          ...prev.logs,
+          {
+            text: `Erro ao criar e-book: ${error.message}`,
+            timestamp: Date.now(),
+            type: 'error'
+          }
+        ]
+      }));
     }
   });
   
@@ -147,10 +204,24 @@ export default function NewEbookPage() {
         return res.json();
       }),
     onSuccess: (data, ebookId) => {
+      const timestamp = Date.now();
       setProgressModal(prev => ({
         ...prev,
         status: 'generating_chapters',
-        message: 'Sumário gerado. Iniciando geração dos capítulos...'
+        message: 'Sumário gerado. Iniciando geração dos capítulos...',
+        logs: [
+          ...prev.logs,
+          {
+            text: 'Sumário gerado com sucesso!',
+            timestamp,
+            type: 'success'
+          },
+          {
+            text: 'Iniciando geração dos capítulos...',
+            timestamp: timestamp + 1,
+            type: 'info'
+          }
+        ]
       }));
       startChapterGeneration(ebookId, 1);
     },
@@ -159,7 +230,18 @@ export default function NewEbookPage() {
       setProgressModal(prev => ({
         ...prev,
         status: 'failed',
-        message: `Erro ao gerar sumário: ${error.message}`
+        error: {
+          message: error.message,
+          step: 'toc'
+        },
+        logs: [
+          ...prev.logs,
+          {
+            text: `Erro ao gerar sumário: ${error.message}`,
+            timestamp: Date.now(),
+            type: 'error'
+          }
+        ]
       }));
     }
   });
@@ -177,19 +259,54 @@ export default function NewEbookPage() {
       const { ebookId, chapterNumber } = variables;
       const nextChapter = chapterNumber + 1;
       const progress = Math.round((chapterNumber / formData.numChapters!) * 100);
+      const timestamp = Date.now();
       
       setProgressModal(prev => ({
         ...prev,
         progress,
         currentChapter: chapterNumber,
-        message: `Capítulo ${chapterNumber} gerado. Progresso: ${progress}%`
+        message: `Capítulo ${chapterNumber} gerado. Progresso: ${progress}%`,
+        logs: [
+          ...prev.logs,
+          {
+            text: `Capítulo ${chapterNumber} gerado com sucesso!`,
+            timestamp,
+            type: 'success'
+          }
+        ]
       }));
+      
+      // Atualizar o tempo restante
+      updateTimeRemaining();
       
       // Verificar se já terminou todos os capítulos
       if (chapterNumber >= formData.numChapters!) {
+        setProgressModal(prev => ({
+          ...prev,
+          message: 'Todos os capítulos gerados. Criando capa personalizada...',
+          logs: [
+            ...prev.logs,
+            {
+              text: 'Todos os capítulos gerados! Criando capa personalizada...',
+              timestamp: timestamp + 1,
+              type: 'info'
+            }
+          ]
+        }));
         generateCoverMutation.mutate(ebookId);
       } else {
         // Gerar próximo capítulo
+        setProgressModal(prev => ({
+          ...prev,
+          logs: [
+            ...prev.logs,
+            {
+              text: `Gerando capítulo ${nextChapter} de ${formData.numChapters}...`,
+              timestamp: timestamp + 1,
+              type: 'info'
+            }
+          ]
+        }));
         startChapterGeneration(ebookId, nextChapter);
       }
     },
@@ -198,7 +315,19 @@ export default function NewEbookPage() {
       setProgressModal(prev => ({
         ...prev,
         status: 'failed',
-        message: `Erro ao gerar capítulo ${variables.chapterNumber}: ${error.message}`
+        error: {
+          message: error.message,
+          step: 'chapter',
+          chapterNumber: variables.chapterNumber
+        },
+        logs: [
+          ...prev.logs,
+          {
+            text: `Erro ao gerar capítulo ${variables.chapterNumber}: ${error.message}`,
+            timestamp: Date.now(),
+            type: 'error'
+          }
+        ]
       }));
     }
   });
@@ -213,11 +342,25 @@ export default function NewEbookPage() {
         return res.json();
       }),
     onSuccess: (data, ebookId) => {
+      const timestamp = Date.now();
       setProgressModal(prev => ({
         ...prev,
         status: 'completed',
         progress: 100,
-        message: 'E-book gerado com sucesso!'
+        message: 'E-book gerado com sucesso!',
+        logs: [
+          ...prev.logs,
+          {
+            text: 'Capa gerada com sucesso!',
+            timestamp,
+            type: 'success'
+          },
+          {
+            text: 'E-book finalizado com sucesso!',
+            timestamp: timestamp + 1,
+            type: 'success'
+          }
+        ]
       }));
       
       // Aguardar 2 segundos antes de redirecionar para a página de edição
@@ -230,7 +373,18 @@ export default function NewEbookPage() {
       setProgressModal(prev => ({
         ...prev,
         status: 'failed',
-        message: `Erro ao gerar capa: ${error.message}`
+        error: {
+          message: error.message,
+          step: 'cover'
+        },
+        logs: [
+          ...prev.logs,
+          {
+            text: `Erro ao gerar capa: ${error.message}`,
+            timestamp: Date.now(),
+            type: 'error'
+          }
+        ]
       }));
     }
   });
@@ -238,6 +392,20 @@ export default function NewEbookPage() {
   // Função para iniciar o processo de geração
   const startEbookGeneration = async (ebookId: string) => {
     try {
+      const timestamp = Date.now();
+      // Atualizar logs
+      setProgressModal(prev => ({
+        ...prev,
+        logs: [
+          ...prev.logs,
+          {
+            text: 'Iniciando geração do sumário...',
+            timestamp,
+            type: 'info'
+          }
+        ]
+      }));
+      
       // Gerar sumário
       generateTocMutation.mutate(ebookId);
     } catch (error: any) {
@@ -245,7 +413,18 @@ export default function NewEbookPage() {
       setProgressModal(prev => ({
         ...prev,
         status: 'failed',
-        message: `Erro ao iniciar geração: ${error.message}`
+        error: {
+          message: error.message,
+          step: 'init'
+        },
+        logs: [
+          ...prev.logs,
+          {
+            text: `Erro ao iniciar geração: ${error.message}`,
+            timestamp: Date.now(),
+            type: 'error'
+          }
+        ]
       }));
     }
   };
@@ -394,6 +573,23 @@ export default function NewEbookPage() {
     return `${hours} ${hours === 1 ? 'hora' : 'horas'} e ${minutes} minutos`;
   };
   
+  // Função para formatação de tempo restante
+  const formatTimeRemaining = (seconds: number): string => {
+    if (seconds < 60) return `${Math.round(seconds)} segundos`;
+    
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.round(seconds % 60);
+    
+    if (minutes < 60) {
+      return `${minutes} min ${remainingSeconds} seg`;
+    }
+    
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    
+    return `${hours} h ${remainingMinutes} min`;
+  };
+  
   // Componente de Template Card com Preview
   const TemplateCard = ({ template }: { template: typeof templates[0] }) => {
     const isSelected = formData.templateId === template.id;
@@ -494,78 +690,242 @@ export default function NewEbookPage() {
           return <LoaderCircle className="w-5 h-5 text-primary animate-spin" />;
       }
     };
+
+    const isGenerating = progressModal.status !== 'completed' && progressModal.status !== 'failed';
     
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full">
+      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl transition-all duration-300 ease-in-out transform">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium">Gerando seu E-book</h3>
-            <button 
-              onClick={() => router.push('/dashboard')}
-              className="text-gray-500 hover:text-gray-700"
-              aria-label="Fechar"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <h3 className="text-lg font-medium flex items-center">
+              {getStatusIcon()}
+              <span className="ml-2">
+                {progressModal.status === 'completed' 
+                  ? 'E-book Gerado com Sucesso!' 
+                  : progressModal.status === 'failed'
+                  ? 'Erro na Geração'
+                  : 'Gerando seu E-book'}
+              </span>
+            </h3>
+            
+            {!isGenerating && (
+              <button 
+                onClick={() => progressModal.status === 'completed' 
+                  ? router.push(`/ebooks/${progressModal.ebook?.id}/edit`) 
+                  : router.push('/dashboard')}
+                className="text-gray-500 hover:text-gray-700"
+                aria-label="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
           
           <div className="space-y-4">
             <div className="flex items-center text-sm">
-              {getStatusIcon()}
               <span className="ml-2">{progressModal.message}</span>
             </div>
             
-            {progressModal.status === 'generating_chapters' && (
-              <div>
-                <div className="flex justify-between text-xs text-gray-500 mb-1">
-                  <span>Capítulo {progressModal.currentChapter} de {formData.numChapters}</span>
-                  <span>{progressModal.progress}%</span>
-                </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary transition-all duration-300"
-                    style={{ 
-                      width: `${progressModal.progress}%`,
-                      backgroundColor: formData.color || '#7c3aed'
-                    }}
-                  ></div>
-                </div>
+            {/* Barra de progresso */}
+            <div>
+              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <span>
+                  {progressModal.status === 'generating_chapters' && 
+                    `Capítulo ${progressModal.currentChapter} de ${formData.numChapters}`}
+                  {progressModal.status === 'generating_toc' && 'Gerando sumário...'}
+                  {progressModal.status === 'generating_cover' && 'Criando capa...'}
+                </span>
+                <span>{progressModal.progress}%</span>
+              </div>
+              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full transition-all duration-500 ease-out"
+                  style={{ 
+                    width: `${progressModal.progress}%`,
+                    backgroundColor: progressModal.status === 'failed' 
+                      ? '#ef4444' 
+                      : progressModal.status === 'completed'
+                      ? '#10b981'
+                      : formData.color || '#7c3aed'
+                  }}
+                ></div>
+              </div>
+            </div>
+            
+            {/* Tempo estimado */}
+            {isGenerating && progressModal.timeRemaining > 0 && (
+              <div className="flex items-center text-xs text-gray-500">
+                <Clock className="w-4 h-4 mr-1" />
+                <span>
+                  Tempo restante estimado: {formatTimeRemaining(progressModal.timeRemaining)}
+                </span>
               </div>
             )}
             
-            <div className="flex items-center text-xs text-gray-500">
-              <Clock className="w-4 h-4 mr-1" />
-              <span>
-                {progressModal.status === 'completed' 
-                  ? 'Concluído!' 
-                  : progressModal.status === 'failed'
-                  ? 'Processo interrompido'
-                  : 'Este processo pode levar alguns minutos'}
-              </span>
+            {/* Log de eventos */}
+            <div className="mt-4 border border-gray-200 rounded-md bg-gray-50 overflow-y-auto max-h-40 text-xs">
+              <div className="p-2 space-y-1">
+                {progressModal.logs.slice(-15).map((log, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`flex items-start py-1 ${idx === progressModal.logs.length - 1 ? 'animate-pulse' : ''}`}
+                  >
+                    <span 
+                      className={`w-2 h-2 rounded-full mt-1 mr-2 flex-shrink-0 ${
+                        log.type === 'success' ? 'bg-green-500' : 
+                        log.type === 'error' ? 'bg-red-500' : 
+                        log.type === 'warning' ? 'bg-yellow-500' : 
+                        'bg-blue-500'
+                      }`}
+                    ></span>
+                    <span className={`${
+                      log.type === 'success' ? 'text-green-700' : 
+                      log.type === 'error' ? 'text-red-700' : 
+                      log.type === 'warning' ? 'text-yellow-700' : 
+                      'text-gray-700'
+                    }`}>
+                      {log.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
             
+            {/* Opções de ação */}
             {progressModal.status === 'completed' && (
-              <div className="flex justify-center mt-2">
-                <p className="text-sm text-gray-600">
-                  Redirecionando para o editor...
-                </p>
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={() => router.push(`/ebooks/${progressModal.ebook?.id}/edit`)}
+                  className="px-4 py-2 bg-primary text-white rounded-md text-sm flex items-center hover:bg-primary-dark transition-colors"
+                  style={{ backgroundColor: formData.color || '#7c3aed' }}
+                >
+                  <BookPlus className="w-4 h-4 mr-2" />
+                  Editar E-book
+                </button>
               </div>
             )}
             
             {progressModal.status === 'failed' && (
-              <div className="flex justify-center mt-2">
-                <button
-                  onClick={() => router.push('/dashboard')}
-                  className="px-4 py-2 bg-gray-200 rounded-md text-sm"
-                >
-                  Voltar ao Dashboard
-                </button>
+              <div className="flex flex-col items-center mt-4 space-y-3">
+                <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md w-full">
+                  <span className="font-medium">Erro: </span>
+                  {progressModal.error?.message || 'Ocorreu um erro durante a geração.'}
+                </div>
+                
+                <div className="flex space-x-3">
+                  <button
+                    onClick={retryGeneration}
+                    className="px-4 py-2 bg-primary text-white rounded-md text-sm flex items-center hover:bg-primary-dark transition-colors"
+                    style={{ backgroundColor: formData.color || '#7c3aed' }}
+                  >
+                    <LoaderCircle className="w-4 h-4 mr-2" />
+                    Tentar novamente
+                  </button>
+                  
+                  <button
+                    onClick={() => router.push('/dashboard')}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm flex items-center hover:bg-gray-50 transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Voltar
+                  </button>
+                </div>
               </div>
             )}
           </div>
         </div>
       </div>
     );
+  };
+  
+  // Função para retomar o processo de geração após erro
+  const retryGeneration = () => {
+    if (!progressModal.error || !progressModal.ebook) return;
+    
+    const ebookId = progressModal.ebook.id;
+    const timestamp = Date.now();
+    
+    switch (progressModal.error.step) {
+      case 'create':
+        // Se falhou na criação, tente criar novamente
+        createEbookMutation.mutate();
+        break;
+      
+      case 'toc':
+        // Se falhou no sumário, tente gerar novamente
+        setProgressModal(prev => ({
+          ...prev,
+          status: 'generating_toc',
+          error: null,
+          logs: [
+            ...prev.logs,
+            {
+              text: 'Tentando gerar sumário novamente...',
+              timestamp,
+              type: 'info'
+            }
+          ]
+        }));
+        generateTocMutation.mutate(ebookId);
+        break;
+      
+      case 'chapter':
+        // Se falhou em um capítulo, tente gerar novamente
+        const chapterNumber = progressModal.error.chapterNumber || progressModal.currentChapter || 1;
+        setProgressModal(prev => ({
+          ...prev,
+          status: 'generating_chapters',
+          error: null,
+          logs: [
+            ...prev.logs,
+            {
+              text: `Tentando gerar capítulo ${chapterNumber} novamente...`,
+              timestamp,
+              type: 'info'
+            }
+          ]
+        }));
+        generateChapterMutation.mutate({ ebookId, chapterNumber });
+        break;
+      
+      case 'cover':
+        // Se falhou na capa, tente gerar novamente
+        setProgressModal(prev => ({
+          ...prev,
+          status: 'generating_cover',
+          error: null,
+          logs: [
+            ...prev.logs,
+            {
+              text: 'Tentando gerar capa novamente...',
+              timestamp,
+              type: 'info'
+            }
+          ]
+        }));
+        generateCoverMutation.mutate(ebookId);
+        break;
+      
+      default:
+        // Caso de erro desconhecido, comece do início
+        setProgressModal(prev => ({
+          ...prev,
+          status: 'generating_toc',
+          error: null,
+          progress: 0,
+          currentChapter: 0,
+          logs: [
+            ...prev.logs,
+            {
+              text: 'Reiniciando o processo de geração...',
+              timestamp,
+              type: 'info'
+            }
+          ]
+        }));
+        startEbookGeneration(ebookId);
+        break;
+    }
   };
   
   // Renderização do conteúdo com base na etapa atual
