@@ -7,7 +7,7 @@ import {
   ArrowLeft, BookPlus, Sparkles, Clock, CheckCircle, 
   LoaderCircle, PenLine, Palette, Layout, Book, X, 
   MessageSquare, CalendarClock, Layers, AlertCircle,
-  Info, Eye
+  Info, Eye, Loader2
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ebookApi, generationApi } from '../../hooks/api';
@@ -117,6 +117,10 @@ export default function NewEbookPage() {
     templateId: '',
     color: ''
   });
+  
+  // Estado para controlar a geração de descrição
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
   
   // Função para calcular tempo restante
   const updateTimeRemaining = useCallback(() => {
@@ -529,28 +533,68 @@ export default function NewEbookPage() {
     }
   };
   
-  // Função para gerar uma descrição utilizando IA
+  // Função para gerar descrição automática com IA
   const handleGenerateDescription = async () => {
-    if (!formData.title) {
-      setErrors(prev => ({ ...prev, title: 'Insira um título para gerar a descrição' }));
-      return;
-    }
-    
     try {
+      // Verificar se há um título
+      if (!formData.title || formData.title.trim() === '') {
+        alert("Por favor, insira um título antes de gerar a descrição.");
+        return;
+      }
+
+      setIsGeneratingDescription(true);
+      setDescriptionError(null);
+
+      // Obter token de autenticação do localStorage
+      const supabaseAuth = localStorage.getItem('supabase.auth.token');
+      let authToken = '';
+      
+      if (supabaseAuth) {
+        try {
+          const authData = JSON.parse(supabaseAuth);
+          authToken = authData.access_token || '';
+        } catch (e) {
+          console.error('Erro ao obter token de autenticação:', e);
+        }
+      }
+
       const response = await fetch('/api/ai/generate-description', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: formData.title })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ title: formData.title }),
       });
-      
-      if (!response.ok) throw new Error('Falha ao gerar descrição');
-      
+
+      if (response.status === 401) {
+        // Erro de autenticação - redirecionar para login
+        alert("Você precisa estar logado para gerar descrições. Redirecionando para a página de login...");
+        window.location.href = "/login";
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Falha ao gerar descrição');
+      }
+
       const data = await response.json();
-      setFormData(prev => ({ ...prev, description: data.description }));
       
+      // Atualizar o formulário com a descrição gerada
+      setFormData(prev => ({
+        ...prev,
+        description: data.description
+      }));
+
+      alert("Descrição gerada com sucesso!");
     } catch (error: any) {
       console.error('Erro ao gerar descrição:', error);
-      alert(`Erro ao gerar descrição: ${error.message}`);
+      setDescriptionError(error.message || 'Erro ao gerar descrição com IA');
+      
+      alert(error.message || 'Erro ao gerar descrição com IA');
+    } finally {
+      setIsGeneratingDescription(false);
     }
   };
   
@@ -991,21 +1035,32 @@ export default function NewEbookPage() {
                 )}
               </div>
               
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="block text-sm font-medium text-gray-700">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">
                     Descrição
                   </label>
                   <button
                     type="button"
                     onClick={handleGenerateDescription}
+                    disabled={isGeneratingDescription || step !== 2}
                     className="text-xs text-primary flex items-center hover:text-primary-dark"
                   >
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    Gerar com IA
+                    {isGeneratingDescription ? (
+                      <>
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        Gerando...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-3 w-3" />
+                        Gerar com IA
+                      </>
+                    )}
                   </button>
                 </div>
                 <textarea
+                  id="description"
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
@@ -1013,23 +1068,9 @@ export default function NewEbookPage() {
                   placeholder="Descreva o conteúdo do seu e-book..."
                   rows={4}
                 />
-
-                <div className="flex justify-center mt-3">
-                  <button
-                    type="button"
-                    onClick={handleGenerateDescription}
-                    className="flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white transition-colors duration-150"
-                    style={{ backgroundColor: formData.color || '#7c3aed' }}
-                    disabled={!formData.title}
-                  >
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Gerar Descrição Automática com IA
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 text-center mt-1">
-                  Preencha o título primeiro e clique para gerar uma descrição automaticamente,
-                  <br />ou escreva sua própria descrição no campo acima.
-                </p>
+                {descriptionError && (
+                  <p className="text-red-500 text-xs mt-1">{descriptionError}</p>
+                )}
               </div>
               
               <div>
