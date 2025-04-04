@@ -10,7 +10,7 @@ import {
   Info, Eye, Loader2
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ebookApi, generationApi } from '../../hooks/api';
+import { ebookApi } from '../../hooks/api';
 import { EbookCreationData } from '../../types/ebook';
 
 // Templates disponíveis para seleção
@@ -163,7 +163,7 @@ export default function NewEbookPage() {
         ebook,
         show: true,
         status: 'created',
-        message: 'E-book criado com sucesso. Iniciando geração do sumário...',
+        message: 'E-book criado com sucesso. Iniciando geração...',
         startTime: timestamp,
         logs: [
           ...prev.logs,
@@ -198,155 +198,18 @@ export default function NewEbookPage() {
     }
   });
   
-  // Mutação para gerar o sumário
-  const generateTocMutation = useMutation({
+  // Mutação para geração completa do e-book
+  const generateEbookMutation = useMutation({
     mutationFn: (ebookId: string) => 
-      fetch(`/api/ebooks/${ebookId}/generate-toc`, {
+      fetch(`/api/ebooks/${ebookId}/generate`, {
         method: 'POST'
       }).then(res => {
-        if (!res.ok) throw new Error('Falha ao gerar sumário');
+        if (!res.ok) throw new Error('Falha ao gerar e-book');
         return res.json();
       }),
-    onSuccess: (data, ebookId) => {
-      const timestamp = Date.now();
-      setProgressModal(prev => ({
-        ...prev,
-        status: 'generating_chapters',
-        message: 'Sumário gerado. Iniciando geração dos capítulos...',
-        logs: [
-          ...prev.logs,
-          {
-            text: 'Sumário gerado com sucesso!',
-            timestamp,
-            type: 'success'
-          },
-          {
-            text: 'Iniciando geração dos capítulos...',
-            timestamp: timestamp + 1,
-            type: 'info'
-          }
-        ]
-      }));
-      startChapterGeneration(ebookId, 1);
-    },
-    onError: (error: Error) => {
-      console.error('Erro ao gerar sumário:', error);
-      setProgressModal(prev => ({
-        ...prev,
-        status: 'failed',
-        error: {
-          message: error.message,
-          step: 'toc'
-        },
-        logs: [
-          ...prev.logs,
-          {
-            text: `Erro ao gerar sumário: ${error.message}`,
-            timestamp: Date.now(),
-            type: 'error'
-          }
-        ]
-      }));
-    }
-  });
-  
-  // Mutação para gerar capítulo
-  const generateChapterMutation = useMutation({
-    mutationFn: ({ ebookId, chapterNumber }: { ebookId: string, chapterNumber: number }) => 
-      fetch(`/api/ebooks/${ebookId}/generate-chapter/${chapterNumber}`, {
-        method: 'POST'
-      }).then(res => {
-        if (!res.ok) throw new Error(`Falha ao gerar capítulo ${chapterNumber}`);
-        return res.json();
-      }),
-    onSuccess: (data, variables) => {
-      const { ebookId, chapterNumber } = variables;
-      const nextChapter = chapterNumber + 1;
-      const progress = Math.round((chapterNumber / formData.numChapters!) * 100);
-      const timestamp = Date.now();
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['ebooks'] });
       
-      setProgressModal(prev => ({
-        ...prev,
-        progress,
-        currentChapter: chapterNumber,
-        message: `Capítulo ${chapterNumber} gerado. Progresso: ${progress}%`,
-        logs: [
-          ...prev.logs,
-          {
-            text: `Capítulo ${chapterNumber} gerado com sucesso!`,
-            timestamp,
-            type: 'success'
-          }
-        ]
-      }));
-      
-      // Atualizar o tempo restante
-      updateTimeRemaining();
-      
-      // Verificar se já terminou todos os capítulos
-      if (chapterNumber >= formData.numChapters!) {
-        setProgressModal(prev => ({
-          ...prev,
-          message: 'Todos os capítulos gerados. Criando capa personalizada...',
-          logs: [
-            ...prev.logs,
-            {
-              text: 'Todos os capítulos gerados! Criando capa personalizada...',
-              timestamp: timestamp + 1,
-              type: 'info'
-            }
-          ]
-        }));
-        generateCoverMutation.mutate(ebookId);
-      } else {
-        // Gerar próximo capítulo
-        setProgressModal(prev => ({
-          ...prev,
-          logs: [
-            ...prev.logs,
-            {
-              text: `Gerando capítulo ${nextChapter} de ${formData.numChapters}...`,
-              timestamp: timestamp + 1,
-              type: 'info'
-            }
-          ]
-        }));
-        startChapterGeneration(ebookId, nextChapter);
-      }
-    },
-    onError: (error: Error, variables) => {
-      console.error(`Erro ao gerar capítulo ${variables.chapterNumber}:`, error);
-      setProgressModal(prev => ({
-        ...prev,
-        status: 'failed',
-        error: {
-          message: error.message,
-          step: 'chapter',
-          chapterNumber: variables.chapterNumber
-        },
-        logs: [
-          ...prev.logs,
-          {
-            text: `Erro ao gerar capítulo ${variables.chapterNumber}: ${error.message}`,
-            timestamp: Date.now(),
-            type: 'error'
-          }
-        ]
-      }));
-    }
-  });
-  
-  // Mutação para gerar capa
-  const generateCoverMutation = useMutation({
-    mutationFn: (ebookId: string) => 
-      fetch(`/api/ebooks/${ebookId}/generate-cover`, {
-        method: 'POST'
-      }).then(res => {
-        if (!res.ok) throw new Error('Falha ao gerar capa');
-        return res.json();
-      }),
-    onSuccess: (data, ebookId) => {
-      const timestamp = Date.now();
       setProgressModal(prev => ({
         ...prev,
         status: 'completed',
@@ -355,36 +218,31 @@ export default function NewEbookPage() {
         logs: [
           ...prev.logs,
           {
-            text: 'Capa gerada com sucesso!',
-            timestamp,
-            type: 'success'
-          },
-          {
-            text: 'E-book finalizado com sucesso!',
-            timestamp: timestamp + 1,
+            text: 'E-book gerado com sucesso!',
+            timestamp: Date.now(),
             type: 'success'
           }
         ]
       }));
       
-      // Aguardar 2 segundos antes de redirecionar para a página de edição
+      // Redirecionar para a página do e-book após 3 segundos
       setTimeout(() => {
-        router.push(`/ebooks/${ebookId}/edit`);
-      }, 2000);
+        router.push(`/ebooks/${data.id}`);
+      }, 3000);
     },
     onError: (error: Error) => {
-      console.error('Erro ao gerar capa:', error);
+      console.error('Erro ao gerar e-book:', error);
       setProgressModal(prev => ({
         ...prev,
         status: 'failed',
         error: {
           message: error.message,
-          step: 'cover'
+          step: 'generate'
         },
         logs: [
           ...prev.logs,
           {
-            text: `Erro ao gerar capa: ${error.message}`,
+            text: `Erro ao gerar e-book: ${error.message}`,
             timestamp: Date.now(),
             type: 'error'
           }
@@ -400,18 +258,24 @@ export default function NewEbookPage() {
       // Atualizar logs
       setProgressModal(prev => ({
         ...prev,
+        status: 'generating_toc',
+        message: 'Iniciando geração do e-book...',
         logs: [
           ...prev.logs,
           {
-            text: 'Iniciando geração do sumário...',
+            text: 'Iniciando geração do e-book...',
             timestamp,
             type: 'info'
           }
         ]
       }));
       
-      // Gerar sumário
-      generateTocMutation.mutate(ebookId);
+      // Iniciar geração completa do e-book
+      generateEbookMutation.mutate(ebookId);
+      
+      // Iniciar o polling de progresso
+      startProgressPolling(ebookId);
+      
     } catch (error: any) {
       console.error('Erro ao iniciar geração do e-book:', error);
       setProgressModal(prev => ({
@@ -433,9 +297,98 @@ export default function NewEbookPage() {
     }
   };
   
-  // Função para iniciar a geração de um capítulo
-  const startChapterGeneration = (ebookId: string, chapterNumber: number) => {
-    generateChapterMutation.mutate({ ebookId, chapterNumber });
+  // Função para fazer polling do progresso
+  const startProgressPolling = (ebookId: string) => {
+    const pollInterval = setInterval(async () => {
+      try {
+        // Se a geração já foi concluída ou falhou, parar o polling
+        if (progressModal.status === 'completed' || progressModal.status === 'failed') {
+          clearInterval(pollInterval);
+          return;
+        }
+        
+        const response = await fetch(`/api/ebooks/${ebookId}`);
+        if (!response.ok) {
+          throw new Error('Falha ao buscar progresso');
+        }
+        
+        const data = await response.json();
+        
+        // Atualizar o estado do progresso
+        setProgressModal(prev => {
+          // Verificar se o status mudou
+          const statusChanged = prev.status !== data.status;
+          
+          // Criar novos logs para mudanças de status
+          let newLogs = [...prev.logs];
+          
+          if (statusChanged) {
+            const statusMessages: Record<string, string> = {
+              generating_toc: 'Gerando sumário...',
+              generating_chapters: 'Gerando capítulos...',
+              generating_cover: 'Gerando capa...',
+              completed: 'E-book concluído!',
+              failed: 'Falha na geração do e-book.'
+            };
+            
+            if (statusMessages[data.status]) {
+              newLogs.push({
+                text: statusMessages[data.status],
+                timestamp: Date.now(),
+                type: data.status === 'failed' ? 'error' : 'info'
+              });
+            }
+          }
+          
+          return {
+            ...prev,
+            status: data.status,
+            progress: data.progress,
+            currentChapter: data.current_chapter || 0,
+            logs: newLogs,
+            message: getStatusMessage(data.status, data.progress)
+          };
+        });
+        
+        // Se concluído ou falhou, parar o polling
+        if (data.status === 'completed' || data.status === 'failed') {
+          clearInterval(pollInterval);
+          
+          // Se completou, atualizar a cache do React Query
+          if (data.status === 'completed') {
+            queryClient.invalidateQueries({ queryKey: ['ebooks'] });
+          }
+        }
+        
+      } catch (error) {
+        console.error('Erro ao buscar progresso:', error);
+      }
+    }, 3000); // Polling a cada 3 segundos
+    
+    // Limpar o intervalo quando o componente for desmontado
+    return () => clearInterval(pollInterval);
+  };
+  
+  // Função para obter a mensagem de status
+  const getStatusMessage = (status: string, progress: number): string => {
+    switch (status) {
+      case 'initializing':
+        return 'Inicializando seu e-book...';
+      case 'created':
+        return 'E-book criado. Iniciando geração...';
+      case 'generating_toc':
+        return 'Gerando sumário...';
+      case 'generating_chapters':
+        return `Gerando capítulos... (${progress}%)`;
+      case 'generating_cover':
+        return 'Gerando capa...';
+      case 'completed':
+        return 'E-book gerado com sucesso!';
+      case 'failed':
+        return 'Falha na geração do e-book.';
+      default:
+        return 'Processando...';
+    }
   };
   
   // Função para lidar com a mudança de campos do formulário
@@ -874,43 +827,6 @@ export default function NewEbookPage() {
         createEbookMutation.mutate();
         break;
       
-      case 'toc':
-        // Se falhou no sumário, tente gerar novamente
-        setProgressModal(prev => ({
-          ...prev,
-          status: 'generating_toc',
-          error: null,
-          logs: [
-            ...prev.logs,
-            {
-              text: 'Tentando gerar sumário novamente...',
-              timestamp,
-              type: 'info'
-            }
-          ]
-        }));
-        generateTocMutation.mutate(ebookId);
-        break;
-      
-      case 'chapter':
-        // Se falhou em um capítulo, tente gerar novamente
-        const chapterNumber = progressModal.error.chapterNumber || progressModal.currentChapter || 1;
-        setProgressModal(prev => ({
-          ...prev,
-          status: 'generating_chapters',
-          error: null,
-          logs: [
-            ...prev.logs,
-            {
-              text: `Tentando gerar capítulo ${chapterNumber} novamente...`,
-              timestamp,
-              type: 'info'
-            }
-          ]
-        }));
-        generateChapterMutation.mutate({ ebookId, chapterNumber });
-        break;
-      
       case 'cover':
         // Se falhou na capa, tente gerar novamente
         setProgressModal(prev => ({
@@ -926,7 +842,7 @@ export default function NewEbookPage() {
             }
           ]
         }));
-        generateCoverMutation.mutate(ebookId);
+        generateEbookMutation.mutate(ebookId);
         break;
       
       default:

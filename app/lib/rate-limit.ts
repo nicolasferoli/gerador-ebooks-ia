@@ -1,126 +1,71 @@
-import { Redis } from '@upstash/redis';
+/**
+ * Implementação simplificada de rate limit para desenvolvimento local
+ * Esta versão não depende de Redis ou outros serviços externos
+ */
 
-let redis: Redis | null = null;
+// Cache local para desenvolvimento
+const localRateLimit: Record<string, { count: number, reset: number }> = {};
 
-// Inicializa o cliente Redis
-function getRedisClient() {
-  if (redis) return redis;
-
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    // Fallback para desenvolvimento local sem Redis
-    console.warn('Variáveis de ambiente Redis não configuradas. Utilizando implementação mock para rate limit.');
-    return null;
-  }
-
-  redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
-  });
-
-  return redis;
+interface RateLimitResult {
+  success: boolean;
+  limit: number;
+  remaining: number;
+  reset: number; // timestamp em milissegundos
 }
 
-// Implementação de fallback para desenvolvimento local sem Redis
-const localRateLimitData: Record<string, { count: number, reset: number }> = {};
-
 /**
- * Aplica rate limiting a uma operação
- * @param identifier Identificador único da operação (ex: user_123_create_ebook)
- * @param limit Número máximo de operações permitidas no período
- * @param windowInSeconds Janela de tempo em segundos (padrão: 1 hora)
+ * Implementa um rate limit básico usando memória local
+ * @param identifier Identificador único para o usuário/endpoint
+ * @param limit Limite máximo de requisições
+ * @param window Janela de tempo em segundos (padrão: 60 = 1 minuto)
+ * @returns Objeto com informações do rate limit
  */
 export async function rateLimit(
   identifier: string,
   limit: number,
-  windowInSeconds: number = 3600
-): Promise<{
-  success: boolean;
-  limit: number;
-  remaining: number;
-  reset: number;
-}> {
-  const redis = getRedisClient();
+  window: number = 60
+): Promise<RateLimitResult> {
   const now = Date.now();
-
-  // Se não houver Redis, usar implementação local
-  if (!redis) {
-    const key = identifier;
-    const resetTimestamp = now + windowInSeconds * 1000;
-
-    if (!localRateLimitData[key] || localRateLimitData[key].reset < now) {
-      localRateLimitData[key] = { count: 1, reset: resetTimestamp };
-      return {
-        success: true,
-        limit,
-        remaining: limit - 1,
-        reset: resetTimestamp
-      };
+  
+  // Limpar entradas expiradas
+  Object.keys(localRateLimit).forEach(key => {
+    if (localRateLimit[key].reset < now) {
+      delete localRateLimit[key];
     }
-
-    const currentCount = localRateLimitData[key].count;
-    if (currentCount >= limit) {
-      return {
-        success: false,
-        limit,
-        remaining: 0,
-        reset: localRateLimitData[key].reset
-      };
-    }
-
-    localRateLimitData[key].count += 1;
-    return {
-      success: true,
-      limit,
-      remaining: limit - localRateLimitData[key].count,
-      reset: localRateLimitData[key].reset
+  });
+  
+  // Se não houver entrada ou estiver expirada, criar nova
+  if (!localRateLimit[identifier] || localRateLimit[identifier].reset < now) {
+    localRateLimit[identifier] = {
+      count: 1,
+      reset: now + window * 1000
     };
-  }
-
-  // Implementação com Redis
-  const key = `rate_limit:${identifier}`;
-  const resetTimestamp = now + windowInSeconds * 1000;
-  const resetKey = `${key}:reset`;
-
-  // Verificar se já existe uma janela de rate limit
-  const [count, reset] = await Promise.all([
-    redis.get<number>(key),
-    redis.get<number>(resetKey)
-  ]);
-
-  // Se não existir uma janela ou a janela expirou, criar uma nova
-  if (!reset || reset < now) {
-    await Promise.all([
-      redis.set(key, 1),
-      redis.set(resetKey, resetTimestamp),
-      redis.expire(key, windowInSeconds),
-      redis.expire(resetKey, windowInSeconds)
-    ]);
-
+    
     return {
       success: true,
       limit,
       remaining: limit - 1,
-      reset: resetTimestamp
+      reset: now + window * 1000
     };
   }
-
-  // Se o limite já foi atingido
-  if (count && count >= limit) {
+  
+  // Verificar se atingiu o limite
+  if (localRateLimit[identifier].count >= limit) {
     return {
       success: false,
       limit,
       remaining: 0,
-      reset
+      reset: localRateLimit[identifier].reset
     };
   }
-
-  // Incrementar o contador
-  const newCount = await redis.incr(key);
-
+  
+  // Incrementar contador
+  localRateLimit[identifier].count += 1;
+  
   return {
     success: true,
     limit,
-    remaining: limit - newCount,
-    reset
+    remaining: limit - localRateLimit[identifier].count,
+    reset: localRateLimit[identifier].reset
   };
 } 
