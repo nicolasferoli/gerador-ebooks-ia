@@ -545,34 +545,13 @@ export default function NewEbookPage() {
       setIsGeneratingDescription(true);
       setDescriptionError(null);
 
-      // Obter token de autenticação do localStorage
-      const supabaseAuth = localStorage.getItem('supabase.auth.token');
-      let authToken = '';
-      
-      if (supabaseAuth) {
-        try {
-          const authData = JSON.parse(supabaseAuth);
-          authToken = authData.access_token || '';
-        } catch (e) {
-          console.error('Erro ao obter token de autenticação:', e);
-        }
-      }
-
       const response = await fetch('/api/ai/generate-description', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
         },
         body: JSON.stringify({ title: formData.title }),
       });
-
-      if (response.status === 401) {
-        // Erro de autenticação - redirecionar para login
-        alert("Você precisa estar logado para gerar descrições. Redirecionando para a página de login...");
-        window.location.href = "/login";
-        return;
-      }
 
       if (!response.ok) {
         const errorData = await response.json();

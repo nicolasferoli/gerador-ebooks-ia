@@ -1,43 +1,8 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 
 export async function POST(request: Request) {
   try {
-    // Configurações do Supabase
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
-    
-    if (!supabaseUrl || !supabaseKey) {
-      return NextResponse.json(
-        { error: 'Configuração do Supabase não encontrada.' },
-        { status: 500 }
-      );
-    }
-    
-    // Criar um cliente Supabase anônimo
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    // Verificar autenticação usando o cabeçalho de autorização da requisição original
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Não autorizado. Faça login para continuar.' },
-        { status: 401 }
-      );
-    }
-    
-    const token = authHeader.split(' ')[1];
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: 'Não autorizado. Faça login para continuar.' },
-        { status: 401 }
-      );
-    }
-    
     // Extrair título do corpo da requisição
     const body = await request.json();
     const { title } = body;
@@ -85,20 +50,6 @@ export async function POST(request: Request) {
         { error: 'Não foi possível gerar uma descrição. Tente novamente.' },
         { status: 500 }
       );
-    }
-    
-    // Registrar uso da API no Supabase
-    try {
-      await supabase.from('ai_usage_logs').insert({
-        user_id: user.id,
-        feature: 'generate_description',
-        input: title,
-        output_length: description.length,
-        created_at: new Date().toISOString()
-      });
-    } catch (logError) {
-      // Apenas registre o erro, não interrompa o fluxo principal
-      console.warn('Erro ao registrar uso da API:', logError);
     }
     
     return NextResponse.json({ description });
