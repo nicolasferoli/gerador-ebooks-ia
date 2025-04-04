@@ -23,13 +23,18 @@ export default function RootLayout({
         <link rel="stylesheet" href="/css/styles.css" />
       </head>
       <body className={inter.className} style={{
-        backgroundColor: 'white',
+        backgroundColor: '#ffffff',
         color: '#111827'
       }}>
         <TanstackQueryProvider>
           <ThemeProvider>
             <ToastProvider>
-              {children}
+              <div style={{ 
+                backgroundColor: '#ffffff', 
+                minHeight: '100vh'
+              }}>
+                {children}
+              </div>
             </ToastProvider>
           </ThemeProvider>
         </TanstackQueryProvider>

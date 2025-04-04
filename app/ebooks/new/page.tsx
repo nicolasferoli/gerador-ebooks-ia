@@ -1027,7 +1027,8 @@ export default function NewEbookPage() {
                   name="title"
                   value={formData.title}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-gray-50"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  style={{ backgroundColor: "#ffffff" }}
                   placeholder="Ex: Guia Completo de Programação Python"
                 />
                 {errors.title && (
@@ -1064,7 +1065,8 @@ export default function NewEbookPage() {
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-gray-50"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  style={{ backgroundColor: "#ffffff" }}
                   placeholder="Descreva o conteúdo do seu e-book..."
                   rows={4}
                 />
@@ -1081,7 +1083,8 @@ export default function NewEbookPage() {
                   name="language"
                   value={formData.language}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-gray-50"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  style={{ backgroundColor: "#ffffff" }}
                 >
                   {languages.map(lang => (
                     <option key={lang.id} value={lang.id}>
@@ -1173,7 +1176,8 @@ export default function NewEbookPage() {
                   name="specificTopics"
                   value={formData.specificTopics}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-gray-50"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  style={{ backgroundColor: "#ffffff" }}
                   placeholder="Liste tópicos específicos que você gostaria de incluir, separados por vírgula..."
                   rows={3}
                 />
